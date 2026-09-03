@@ -1,280 +1,283 @@
-
 import { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { movies as localMovies } from "../data/movies";
-import { getMovieById } from "../api";
+import { useNavigate, useParams } from "react-router-dom";
+import { movies } from "../data/movies";
 import { useWatchHistory } from "../context/WatchHistoryContext";
-import Navbar from "../components/Navbar";
 import "./watch.css";
 
-function Watch() {
-  const { addToHistory } = useWatchHistory();
+const API_BASE_URL = "http://localhost:5000/api";
+
+export default function Watch() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const videoRef = useRef(null);
 
+  const { addToHistory } = useWatchHistory();
+
   const [movie, setMovie] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [movieError, setMovieError] = useState("");
+  const [error, setError] = useState("");
 
-  const [showLanguages, setShowLanguages] = useState(false);
-  const [audioLanguage, setAudioLanguage] = useState("English");
-  const [subtitleLanguage, setSubtitleLanguage] =
-    useState("English");
+  const [showLanguageMenu, setShowLanguageMenu] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState("English");
 
-  const [savedProgress, setSavedProgress] = useState(0);
-  const [videoDuration, setVideoDuration] = useState(0);
+  const [showControls, setShowControls] = useState(true);
 
-  const subscription = JSON.parse(
-    localStorage.getItem("netflixSubscription") || "null"
+  // --------------------------------------------------
+  // Find local movie
+  // --------------------------------------------------
+  const localMovie = movies.find(
+    (item) => String(item.id) === String(id)
   );
 
-  const hasSubscription = subscription?.active === true;
-
-  const progressKey = `watchProgress_${id}`;
-
-  // =========================
-  // LOAD MOVIE
-  // =========================
+  // --------------------------------------------------
+  // Fetch backend movie
+  // --------------------------------------------------
   useEffect(() => {
-    const loadMovie = async () => {
+    const fetchMovie = async () => {
       try {
         setLoading(true);
-        setMovieError("");
+        setError("");
 
-        const numericId = Number(id);
-
-        // Existing local movie
-        const localMovie = localMovies.find(
-          (item) => item.id === numericId
-        );
-
-        if (!localMovie) {
-          setMovie(null);
-          return;
-        }
-
-        // Try backend movie
         let backendMovie = null;
 
         try {
-          const data = await getMovieById(localMovie.id);
+          const response = await fetch(
+            `${API_BASE_URL}/movies/${id}`
+          );
 
-          if (
-            data &&
-            data.success &&
-            data.movie
-          ) {
-            backendMovie = data.movie;
+          if (response.ok) {
+            backendMovie = await response.json();
           }
         } catch (backendError) {
-          console.warn(
-            "Backend movie details unavailable. Using local data.",
-            backendError
-          );
+          console.log("Backend movie fetch skipped:", backendError);
         }
 
+        // --------------------------------------------------
         // Combine local + backend data
-        const combinedMovie = {
-          ...localMovie,
+        // --------------------------------------------------
+        if (localMovie) {
+          const combinedMovie = {
+            ...localMovie,
 
-          ...(backendMovie || {}),
+            ...(backendMovie || {}),
 
-          // Keep existing numeric ID
-          id: localMovie.id,
+            // Keep existing numeric ID
+            id: localMovie.id,
 
-          // Existing local image
-          image:
-            localMovie.image ||
-            backendMovie?.poster ||
-            "",
+            // Keep local image
+            image:
+              localMovie.image ||
+              backendMovie?.poster ||
+              "",
 
-          // Backend video first, local video fallback
-          trailerUrl:
-            backendMovie?.videoUrl ||
-            backendMovie?.trailerUrl ||
-            localMovie.trailerUrl,
+            // IMPORTANT:
+            // Always use Cloudinary URL from local movies.js
+            // Backend old/stale video URL will NOT override it.
+            trailerUrl: localMovie.trailerUrl,
 
-          // Backend information
-          year:
-            backendMovie?.releaseYear ||
-            localMovie.year,
+            // Backend information
+            year:
+              backendMovie?.releaseYear ||
+              localMovie.year,
 
-          rating:
-            backendMovie?.rating ||
-            localMovie.rating,
+            rating:
+              backendMovie?.rating ||
+              localMovie.rating,
 
-          duration:
-            backendMovie?.duration ||
-            localMovie.duration,
+            duration:
+              backendMovie?.duration ||
+              localMovie.duration,
 
-          description:
-            backendMovie?.description ||
-            localMovie.description,
+            description:
+              backendMovie?.description ||
+              localMovie.description,
 
-          language:
-            backendMovie?.language ||
-            "English",
-        };
+            language:
+              backendMovie?.language ||
+              "English",
+          };
 
-        setMovie(combinedMovie);
-      } catch (error) {
-        console.error(
-          "Watch Movie API Error:",
-          error
-        );
+          setMovie(combinedMovie);
+        } else if (backendMovie) {
+          // If no local movie exists, use backend movie
+          const backendOnlyMovie = {
+            ...backendMovie,
 
-        setMovieError(
-          "Unable to load movie"
-        );
+            id: backendMovie._id,
+
+            image:
+              backendMovie.poster ||
+              backendMovie.backdrop ||
+              "",
+
+            trailerUrl:
+              backendMovie.videoUrl ||
+              backendMovie.trailerUrl ||
+              "",
+          };
+
+          setMovie(backendOnlyMovie);
+        } else {
+          setMovie(null);
+          setError("Movie not found");
+        }
+      } catch (err) {
+        console.error("Movie loading error:", err);
+        setError("Unable to load movie.");
       } finally {
         setLoading(false);
       }
     };
 
-    loadMovie();
-  }, [id]);
+    fetchMovie();
+  }, [id, localMovie]);
 
-  // =========================
-  // LOAD SAVED PROGRESS
-  // =========================
+  // --------------------------------------------------
+  // Add movie to watch history
+  // --------------------------------------------------
   useEffect(() => {
-    const saved = localStorage.getItem(progressKey);
+    if (!movie) return;
 
-    if (saved) {
-      setSavedProgress(Number(saved));
-    }
-  }, [progressKey]);
+    addToHistory(movie);
+  }, [movie]);
 
-  // =========================
-  // SAVE VIDEO PROGRESS
-  // =========================
-  const handleTimeUpdate = () => {
-    const video = videoRef.current;
-
-    if (!video) return;
-
-    if (video.currentTime > 0) {
-      localStorage.setItem(
-        progressKey,
-        String(video.currentTime)
-      );
-    }
-  };
-
-  // =========================
-  // RESTORE VIDEO POSITION
-  // =========================
+  // --------------------------------------------------
+  // Video loaded
+  // --------------------------------------------------
   const handleLoadedMetadata = () => {
     const video = videoRef.current;
 
     if (!video) return;
 
-    setVideoDuration(video.duration);
+    console.log("Video loaded successfully");
+    console.log("Video URL:", video.currentSrc);
+    console.log("Duration:", video.duration);
+  };
 
-    const saved = Number(
-      localStorage.getItem(progressKey) || 0
-    );
+  // --------------------------------------------------
+  // Save watch progress
+  // --------------------------------------------------
+  const handleTimeUpdate = () => {
+    const video = videoRef.current;
 
-    if (
-      saved > 0 &&
-      saved < video.duration - 5
-    ) {
-      video.currentTime = saved;
-    }
+    if (!video || !movie) return;
 
-    if (movie) {
-      addToHistory(movie);
+    if (video.duration > 0) {
+      const progress =
+        (video.currentTime / video.duration) * 100;
+
+      if (progress > 5) {
+        localStorage.setItem(
+          `watch-progress-${movie.id}`,
+          JSON.stringify({
+            currentTime: video.currentTime,
+            duration: video.duration,
+          })
+        );
+      }
     }
   };
 
-  // =========================
-  // VIDEO ENDED
-  // =========================
+  // --------------------------------------------------
+  // Video ended
+  // --------------------------------------------------
   const handleVideoEnded = () => {
-    localStorage.removeItem(progressKey);
-    setSavedProgress(0);
-  };
+    if (!movie) return;
 
-  // =========================
-  // FORMAT TIME
-  // =========================
-  const formatTime = (seconds) => {
-    if (
-      !seconds ||
-      Number.isNaN(seconds)
-    ) {
-      return "0:00";
-    }
-
-    const minutes = Math.floor(
-      seconds / 60
+    localStorage.removeItem(
+      `watch-progress-${movie.id}`
     );
 
-    const remainingSeconds = Math.floor(
-      seconds % 60
-    );
-
-    return `${minutes}:${String(
-      remainingSeconds
-    ).padStart(2, "0")}`;
+    addToHistory(movie);
   };
 
-  // =========================
-  // PROGRESS PERCENTAGE
-  // =========================
-  const getProgressPercentage = () => {
-    if (
-      !savedProgress ||
-      !videoDuration
-    ) {
-      return 0;
-    }
+  // --------------------------------------------------
+  // Restore previous watch position
+  // --------------------------------------------------
+  useEffect(() => {
+    if (!movie) return;
 
-    return Math.min(
-      (savedProgress / videoDuration) * 100,
-      100
+    const video = videoRef.current;
+
+    if (!video) return;
+
+    const restoreProgress = () => {
+      try {
+        const savedProgress = localStorage.getItem(
+          `watch-progress-${movie.id}`
+        );
+
+        if (!savedProgress) return;
+
+        const progress = JSON.parse(savedProgress);
+
+        if (
+          progress?.currentTime &&
+          progress.currentTime > 0 &&
+          progress.currentTime < video.duration
+        ) {
+          video.currentTime = progress.currentTime;
+        }
+      } catch (err) {
+        console.log("Unable to restore progress:", err);
+      }
+    };
+
+    video.addEventListener(
+      "loadedmetadata",
+      restoreProgress
     );
+
+    return () => {
+      video.removeEventListener(
+        "loadedmetadata",
+        restoreProgress
+      );
+    };
+  }, [movie]);
+
+  // --------------------------------------------------
+  // Language selection
+  // --------------------------------------------------
+  const languages = [
+    "English",
+    "Hindi",
+    "Telugu",
+    "Tamil",
+    "Malayalam",
+  ];
+
+  const handleLanguageChange = (language) => {
+    setSelectedLanguage(language);
+    setShowLanguageMenu(false);
   };
 
-  // =========================
-  // LOADING
-  // =========================
+  // --------------------------------------------------
+  // Loading
+  // --------------------------------------------------
   if (loading) {
     return (
       <div className="watch-page">
-        <Navbar />
-
-        <div className="watch-error">
-          <h1>Loading...</h1>
-
-          <p>
-            Please wait while the video is loaded.
-          </p>
+        <div className="watch-loading">
+          Loading...
         </div>
       </div>
     );
   }
 
-  // =========================
-  // ERROR
-  // =========================
-  if (movieError) {
+  // --------------------------------------------------
+  // Error / Movie not found
+  // --------------------------------------------------
+  if (error || !movie) {
     return (
       <div className="watch-page">
-        <Navbar />
-
         <div className="watch-error">
-          <h1>
-            Unable to load movie
-          </h1>
-
-          <p>{movieError}</p>
+          <h2>{error || "Movie not found"}</h2>
 
           <button
             onClick={() => navigate("/")}
+            className="back-home-btn"
           >
             Go Home
           </button>
@@ -283,311 +286,135 @@ function Watch() {
     );
   }
 
-  // =========================
-  // MOVIE NOT FOUND
-  // =========================
-  if (!movie) {
-    return (
-      <div className="watch-page">
-        <Navbar />
-
-        <div className="watch-error">
-          <h1>Movie not found</h1>
-
-          <button
-            onClick={() => navigate("/")}
-          >
-            Go Home
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // =========================
-  // SUBSCRIPTION REQUIRED
-  // =========================
-  if (!hasSubscription) {
-    return (
-      <div className="watch-page">
-        <Navbar />
-
-        <main className="subscription-required">
-
-          <div className="subscription-required-box">
-
-            <div className="lock-icon">
-              🔒
-            </div>
-
-            <p className="required-label">
-              SUBSCRIPTION REQUIRED
-            </p>
-
-            <h1>
-              Choose a plan to watch
-            </h1>
-
-            <p>
-              Start your Netflix-style streaming
-              experience by choosing a subscription plan.
-            </p>
-
-            <button
-              className="required-button"
-              onClick={() =>
-                navigate("/subscription", {
-                  state: {
-                    from: location.pathname,
-                    movieId: movie.id,
-                  },
-                })
-              }
-            >
-              View Plans
-            </button>
-
-            <button
-              className="required-back"
-              onClick={() =>
-                navigate("/")
-              }
-            >
-              ← Back to Browse
-            </button>
-
-          </div>
-
-        </main>
-      </div>
-    );
-  }
-
+  // --------------------------------------------------
+  // Main Watch Page
+  // --------------------------------------------------
   return (
     <div className="watch-page">
-
-      <Navbar />
-
-      <main className="watch-container">
-
-        {/* =========================
-            BACK BUTTON
-        ========================= */}
+      {/* Top Bar */}
+      <div className="watch-topbar">
         <button
-          className="watch-back"
+          className="watch-back-btn"
           onClick={() => navigate(-1)}
         >
           ← Back
         </button>
 
-        {/* =========================
-            VIDEO PLAYER
-        ========================= */}
-        <div className="video-wrapper">
-
-          <video
-            ref={videoRef}
-            className="watch-video"
-            controls
-            autoPlay
-            playsInline
-            poster={movie.image}
-            src={movie.trailerUrl}
-            onTimeUpdate={handleTimeUpdate}
-            onLoadedMetadata={
-              handleLoadedMetadata
-            }
-            onEnded={handleVideoEnded}
-          >
-            Your browser does not support
-            the video tag.
-          </video>
-
+        <div className="watch-title">
+          {movie.title}
         </div>
 
-        {/* =========================
-            RESUME INFORMATION
-        ========================= */}
-        {savedProgress > 0 &&
-          videoDuration > 0 && (
-            <div className="resume-info">
-
-              <span>
-                Resume position:{" "}
-                <strong>
-                  {formatTime(
-                    savedProgress
-                  )}
-                </strong>
-              </span>
-
-              <span>
-                {Math.round(
-                  getProgressPercentage()
-                )}
-                % watched
-              </span>
-
-            </div>
-          )}
-
-        {/* =========================
-            AUDIO & SUBTITLES
-        ========================= */}
-        <div className="language-control">
-
+        <div className="watch-language-wrapper">
           <button
-            className="audio-subtitle-button"
+            className="language-btn"
             onClick={() =>
-              setShowLanguages(
-                (previous) => !previous
-              )
+              setShowLanguageMenu(!showLanguageMenu)
             }
           >
-            ⚙ Audio & Subtitles
+            🔊 {selectedLanguage} ▾
           </button>
 
-          {showLanguages && (
-            <div className="language-panel">
-
-              {/* AUDIO */}
-              <div className="language-section">
-
-                <h3>
-                  Audio
-                </h3>
-
-                {[
-                  "English",
-                  "Hindi",
-                  "Telugu",
-                  "Tamil",
-                  "Malayalam",
-                ].map((language) => (
-                  <button
-                    key={language}
-                    className={
-                      audioLanguage === language
-                        ? "language-option selected-language"
-                        : "language-option"
-                    }
-                    onClick={() =>
-                      setAudioLanguage(
-                        language
-                      )
-                    }
-                  >
-                    {audioLanguage === language
-                      ? "✓ "
-                      : ""}
-                    {language}
-                  </button>
-                ))}
-
-              </div>
-
-              {/* SUBTITLES */}
-              <div className="language-section">
-
-                <h3>
-                  Subtitles
-                </h3>
-
-                {[
-                  "Off",
-                  "English",
-                  "Hindi",
-                  "Telugu",
-                  "Tamil",
-                  "Malayalam",
-                ].map((language) => (
-                  <button
-                    key={language}
-                    className={
-                      subtitleLanguage === language
-                        ? "language-option selected-language"
-                        : "language-option"
-                    }
-                    onClick={() =>
-                      setSubtitleLanguage(
-                        language
-                      )
-                    }
-                  >
-                    {subtitleLanguage === language
-                      ? "✓ "
-                      : ""}
-                    {language}
-                  </button>
-                ))}
-
-              </div>
-
-              {/* SELECTED LANGUAGE */}
-              <div className="selected-language-info">
-
-                <span>
-                  Audio:{" "}
-                  <strong>
-                    {audioLanguage}
-                  </strong>
-                </span>
-
-                <span>
-                  Subtitles:{" "}
-                  <strong>
-                    {subtitleLanguage}
-                  </strong>
-                </span>
-
-              </div>
-
+          {showLanguageMenu && (
+            <div className="language-menu">
+              {languages.map((language) => (
+                <button
+                  key={language}
+                  onClick={() =>
+                    handleLanguageChange(language)
+                  }
+                  className={
+                    selectedLanguage === language
+                      ? "active-language"
+                      : ""
+                  }
+                >
+                  {language}
+                </button>
+              ))}
             </div>
           )}
-
         </div>
+      </div>
 
-        {/* =========================
-            MOVIE INFORMATION
-        ========================= */}
-        <div className="watch-info">
+      {/* Video Section */}
+      <div
+        className="watch-video-container"
+        onMouseMove={() => {
+          setShowControls(true);
 
-          <h1>
-            {movie.title}
-          </h1>
+          clearTimeout(window.watchControlsTimer);
 
-          <div className="watch-meta">
+          window.watchControlsTimer = setTimeout(() => {
+            setShowControls(false);
+          }, 3000);
+        }}
+      >
+        <video
+          ref={videoRef}
+          className="watch-video"
+          controls={showControls}
+          autoPlay
+          playsInline
+          poster={movie.image}
+          src={movie.trailerUrl}
+          onTimeUpdate={handleTimeUpdate}
+          onLoadedMetadata={handleLoadedMetadata}
+          onEnded={handleVideoEnded}
+          onError={(event) => {
+            console.error(
+              "Video playback error:",
+              event
+            );
 
-            <span>
-              {movie.year || "2026"}
-            </span>
+            console.error(
+              "Video URL:",
+              movie.trailerUrl
+            );
+          }}
+        >
+          Your browser does not support the video tag.
+        </video>
+      </div>
 
-            <span>•</span>
+      {/* Movie Information */}
+      <div className="watch-info">
+        <div className="watch-info-header">
+          <div>
+            <h1>{movie.title}</h1>
 
-            <span>
-              {movie.rating || "16+"}
-            </span>
+            <div className="watch-meta">
+              <span>{movie.year}</span>
 
-            <span>•</span>
+              <span>•</span>
 
-            <span>
-              HD
-            </span>
+              <span>{movie.rating}</span>
 
+              <span>•</span>
+
+              <span>{movie.duration}</span>
+
+              <span>•</span>
+
+              <span>{movie.language}</span>
+            </div>
           </div>
-
-          <p>
-            {movie.description ||
-              `You're watching ${movie.title}. Enjoy your movie and continue watching your favourite shows.`}
-          </p>
-
         </div>
 
-      </main>
+        <p className="watch-description">
+          {movie.description}
+        </p>
 
+        {/* Genres */}
+        {movie.genre && movie.genre.length > 0 && (
+          <div className="watch-genres">
+            {movie.genre.map((genre, index) => (
+              <span key={index}>
+                {genre}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
-
-export default Watch;
-
