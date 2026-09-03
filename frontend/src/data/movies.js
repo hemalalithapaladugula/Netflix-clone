@@ -22,7 +22,7 @@ export const movies = [
     genre: "Drama",
     image: strangerThings,
     category: "Trending",
-    trailerUrl: "/videos/stranger-things.mp4",
+    trailerUrl: "https://res.cloudinary.com/unzitmwc/video/upload/v1788429287/stranger-things.mp4",
   },
 
   {
@@ -34,7 +34,7 @@ export const movies = [
     genre: "Mystery",
     image: wednesday,
     category: "Trending",
-    trailerUrl: "/videos/wednesday.mp4",
+    trailerUrl: "https://res.cloudinary.com/unzitmwc/video/upload/v1788443434/wednesday-compressed.mp4",
   },
 
   {
@@ -46,7 +46,7 @@ export const movies = [
     genre: "Fantasy",
     image: witcher,
     category: "Trending",
-    trailerUrl: "/videos/witcher.mp4",
+    trailerUrl: "https://res.cloudinary.com/unzitmwc/video/upload/v1788439595/witcher.mp4",
   },
 
   {
@@ -58,7 +58,7 @@ export const movies = [
     genre: "Crime",
     image: moneyHeist,
     category: "Popular",
-    trailerUrl: "/videos/money-heist.mp4",
+    trailerUrl: "https://res.cloudinary.com/unzitmwc/video/upload/v1788428729/money-heist.mp4",
   },
 
   {
@@ -70,7 +70,7 @@ export const movies = [
     genre: "Sci-Fi",
     image: dark,
     category: "Popular",
-    trailerUrl: "/videos/dark.mp4",
+    trailerUrl: "https://res.cloudinary.com/unzitmwc/video/upload/dark.mp4",
   },
 
   {
@@ -82,7 +82,7 @@ export const movies = [
     genre: "Crime",
     image: breakingBad,
     category: "Popular",
-    trailerUrl: "/videos/breaking-bad.mp4",
+    trailerUrl: "https://res.cloudinary.com/unzitmwc/video/upload/v1788436951/breaking-bad.mp4",
   },
 
   {
@@ -94,7 +94,7 @@ export const movies = [
     genre: "Crime",
     image: peakyBlinders,
     category: "Popular",
-    trailerUrl: "/videos/peaky-blinders.mp4",
+    trailerUrl: "https://res.cloudinary.com/unzitmwc/video/upload/v1788441684/peaky-blinders.mp4",
   },
 
   {
@@ -106,7 +106,7 @@ export const movies = [
     genre: "Drama",
     image: queensGambit,
     category: "New",
-    trailerUrl: "/videos/queens-gambit.mp4",
+    trailerUrl: "https://res.cloudinary.com/unzitmwc/video/upload/v1788430555/queen-gambit.mp4",
   },
 
   {
@@ -118,7 +118,7 @@ export const movies = [
     genre: "Sci-Fi",
     image: blackMirror,
     category: "New",
-    trailerUrl: "/videos/black-mirror.mp4",
+    trailerUrl: "https://res.cloudinary.com/unzitmwc/video/upload/v1788434253/black-mirror.mp4",
   },
 
   {
@@ -130,7 +130,7 @@ export const movies = [
     genre: "Crime",
     image: narcos,
     category: "New",
-    trailerUrl: "/videos/narcos.mp4",
+    trailerUrl: "https://res.cloudinary.com/unzitmwc/video/upload/v1788428861/narcos.mp4",
   },
 
   {
@@ -142,7 +142,7 @@ export const movies = [
     genre: "Fantasy",
     image: lucifer,
     category: "Top10",
-    trailerUrl: "/videos/lucifer.mp4",
+    trailerUrl: "https://res.cloudinary.com/unzitmwc/video/upload/lucifer.mp4",
   },
 
   {
@@ -154,7 +154,7 @@ export const movies = [
     genre: "Thriller",
     image: you,
     category: "Top10",
-    trailerUrl: "/videos/you.mp4",
+    trailerUrl: "https://res.cloudinary.com/unzitmwc/video/upload/v1788429784/you.mp4",
   },
 ];
 
