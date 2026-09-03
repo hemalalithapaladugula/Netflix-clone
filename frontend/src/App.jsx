@@ -24,7 +24,7 @@ import DemoPayment from "./pages/DemoPayment";
 import TVShows from "./pages/TvShows";
 import Profile from "./pages/Profile";
 import UserManagement from "./pages/UserManagement";
-import WatchHistory from "./pages/WatchHistory";
+import WatchHistory from "./pages/watchHistory";
 import ContentManagement from "./pages/ContentManagement";
 import PaymentSuccess from "./pages/PaymentSuccess";
 
