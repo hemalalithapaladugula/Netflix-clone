@@ -94,8 +94,12 @@ export default function Watch() {
               localMovie.description,
 
             language:
-              backendMovie?.language ||
-              "English",
+  backendMovie?.language ||
+  "English",
+
+genre: Array.isArray(localMovie.genre)
+  ? localMovie.genre
+  : [],
           };
 
           setMovie(combinedMovie);
