@@ -5,7 +5,7 @@ import { movies as localMovies } from "../data/movies";
 import { getMovieById } from "../api";
 import { useWatchHistory } from "../context/WatchHistoryContext";
 import Navbar from "../components/Navbar";
-import "./Watch.css";
+import "./watch.css";
 
 function Watch() {
   const { addToHistory } = useWatchHistory();
