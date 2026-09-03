@@ -4,7 +4,7 @@ import { movies } from "../data/movies";
 import { useWatchHistory } from "../context/WatchHistoryContext";
 import "./watch.css";
 
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL = "https://netflix-clone-0rg1.onrender.com/api";
 
 export default function Watch() {
   const { id } = useParams();
